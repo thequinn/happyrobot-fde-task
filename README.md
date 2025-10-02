@@ -37,12 +37,14 @@ SUPABASE_LOADS_TABLE=loads
 LOAD_API_KEY=super-secret-key
 ```
 
-## API Key Setup for all endpoints
+## API Key Setup for all endpoints in `main.py`
 
-1. Pick the shared secret you want to distribute and set `LOAD_API_KEY` in your `.env` file (or secret manager when deploying).
-2. Ensure the app reads that value at runtime: keep the `.env` file beside the project for local use or export it manually (e.g. `export LOAD_API_KEY=super-secret-key`) before launching, and pass `--set-env-vars LOAD_API_KEY=...` when deploying to Cloud Run.
-3. Restrict invocation to authenticated callers: set `--allow-unauthenticated=false` when deploying to Cloud Run.
-4. Require clients to include `Authorization: Bearer <your-key>` on every `/get_loads` request; calls without the matching token receive `401/403` responses.
+1. Choose the shared secret and set `LOAD_API_KEY` in `.env` (or your secret store).
+2. Load it at runtime:
+   - Local: keep the `.env` file alongside the project or export `LOAD_API_KEY=...` before running Uvicorn.
+   - Cloud Run: store it in Secret Manager and wire it through, or pass `--set-env-vars LOAD_API_KEY=...` during `gcloud run deploy`.
+3. Deploy Cloud Run with `--allow-unauthenticated=false` to restrict callers.
+4. Instruct clients to send `Authorization: Bearer <your-key>` on every `/get_loads` call; other requests return `401/403`.
 
 ## Local Development
 
@@ -64,7 +66,7 @@ LOAD_API_KEY=super-secret-key
 
 ## Supabase Table Setup
 
-Create the `loads` table in Supabase with columns matching the sample payload. You can do it by running the SQL in the Supabase dashboard (SQL Editor) or via psql.
+Create the `loads` table in Supabase with columns matching the sample payload. You can do it by running the SQL in the Supabase dashboard (SQL Editor), via `psql`, or using the Supabase CLI.
 
 SQL example:
 

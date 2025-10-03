@@ -44,6 +44,12 @@ class Load(BaseModel):
     dimensions: Optional[str] = None
 
 
+class NegotiationRequest(BaseModel):
+    load_id: str
+    proposed_rate: float = Field(gt=0)
+    notes: Optional[str] = None
+
+
 class NegotiationResponse(BaseModel):
     load_id: str
     accepted: bool
@@ -158,18 +164,17 @@ async def get_loads(origin: str, destination: str, equipment_type: str) -> List[
 
 
 def run_negotiation_logic(
-    load: Optional[Load], proposed_rate: float, load_id: str
+    request: NegotiationRequest, load: Optional[Load]
 ) -> NegotiationResponse:
+    """Very simple heuristic to accept or counter an offer."""
 
-    if load and load.loadboard_rate:
-        original_offer = load.loadboard_rate
-    else:
-        original_offer = proposed_rate
+    target_rate = (
+        load.loadboard_rate if load and load.loadboard_rate else request.proposed_rate
+    )
+    if target_rate is None:
+        target_rate = request.proposed_rate
 
-    acceptance_threshold = loadboard_rate * 0.97
-
-    # Agent's new offer to carrier
-    new_offer = (original_offer + proposed_rate) // 2
+    acceptance_threshold = target_rate * 0.97
 
     if request.proposed_rate >= acceptance_threshold:
         return NegotiationResponse(
@@ -180,7 +185,7 @@ def run_negotiation_logic(
 
     counter_offer = round(target_rate * 0.98, 2)
     return NegotiationResponse(
-        load_id=load_id,
+        load_id=request.load_id,
         accepted=False,
         counter_offer=counter_offer,
         message="Countering at 98% of target rate.",
@@ -193,16 +198,14 @@ def run_negotiation_logic(
     response_model=NegotiationResponse,
     dependencies=[Depends(enforce_api_key)],
 )
-async def negotiate(
-    load_id: str, proposed_rate: float, notes: Optional[str] = None
-) -> NegotiationResponse:
+async def negotiate(request: NegotiationRequest) -> NegotiationResponse:
     settings = get_settings()
     supabase = get_supabase_client()
 
-    attempts_used = NEGOTIATION_ATTEMPTS.get(load_id, 0)
+    attempts_used = NEGOTIATION_ATTEMPTS.get(request.load_id, 0)
     if attempts_used >= MAX_NEGOTIATION_EXCHANGES:
         return NegotiationResponse(
-            load_id=load_id,
+            load_id=request.load_id,
             accepted=False,
             message="Negotiation attempt limit reached; please contact support.",
             remaining_attempts=0,
@@ -212,7 +215,7 @@ async def negotiate(
         response = (
             supabase.table(settings.supabase_table)
             .select("*")
-            .eq("load_id", load_id)
+            .eq("load_id", request.load_id)
             .limit(1)
             .execute()
         )
@@ -246,16 +249,16 @@ async def negotiate(
         ) from exc
 
     attempts_used += 1
-    NEGOTIATION_ATTEMPTS[load_id] = attempts_used
+    NEGOTIATION_ATTEMPTS[request.load_id] = attempts_used
     remaining_attempts = MAX_NEGOTIATION_EXCHANGES - attempts_used
 
-    negotiation_response = run_negotiation_logic(load, proposed_rate, load_id)
+    negotiation_response = run_negotiation_logic(request, load)
     negotiation_response.remaining_attempts = max(remaining_attempts, 0)
 
     if negotiation_response.accepted:
-        NEGOTIATION_ATTEMPTS.pop(load_id, None)
+        NEGOTIATION_ATTEMPTS.pop(request.load_id, None)
     elif remaining_attempts <= 0:
-        NEGOTIATION_ATTEMPTS[load_id] = MAX_NEGOTIATION_EXCHANGES
+        NEGOTIATION_ATTEMPTS[request.load_id] = MAX_NEGOTIATION_EXCHANGES
 
     return negotiation_response
 

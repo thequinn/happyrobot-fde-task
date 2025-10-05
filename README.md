@@ -21,12 +21,13 @@ FastAPI proof-of-concept that lets freight brokerages search Supabase-hosted loa
 
 The application reads configuration from environment variables (optionally via a local `.env` file):
 
-| Variable                    | Description                                           |
-| --------------------------- | ----------------------------------------------------- |
-| `SUPABASE_URL`              | Supabase project URL.                                 |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key used to query the database. |
-| `SUPABASE_LOADS_TABLE`      | (Optional) Table name; defaults to `loads`.           |
-| `LOAD_API_KEY`              | API key required in the `Authorization` header.       |
+| Variable                    | Description                                            |
+| --------------------------- | ------------------------------------------------------ |
+| `SUPABASE_URL`              | Supabase project URL.                                  |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key used to query the database.  |
+| `SUPABASE_LOADS_TABLE`      | (Optional) Table name; defaults to `loads`.            |
+| `LOAD_API_KEY`              | API key required in the `Authorization` header.        |
+| `SUPABASE_DB_URL`           | Postgres connection string (service role credentials). |
 
 Example `.env` file for local development:
 
@@ -35,6 +36,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_LOADS_TABLE=loads
 LOAD_API_KEY=super-secret-key
+SUPABASE_DB_URL=postgresql://postgres:<password>@db.<project>.supabase.co:5432/postgres
 ```
 
 ## API Key Setup for all endpoints in `main.py`
@@ -73,6 +75,8 @@ SQL example:
 ```sql
 create table public.loads (
   load_id text primary key,
+  load_booked text default 'Y',
+  counter_offer numeric,
   origin text not null,
   destination text not null,
   pickup_datetime timestamptz,
@@ -93,6 +97,8 @@ Seed data using the Supabase dashboard or CLI with the entries in [`loads.json`]
 ```bash
 python scripts/seed_supabase.py
 ```
+
+The script expects `SUPABASE_DB_URL` to point to your Supabase Postgres instance (available under Project Settings → Database). It will create the table if missing or truncate and reseed it when it already exists.
 
 ## Docker & Cloud Run Deployment
 

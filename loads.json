@@ -1,6 +1,8 @@
 [
   {
     "load_id": "L001",
+    "load_booked": "N",
+    "counter_offer": null,
     "origin": "Chicago, IL",
     "destination": "Dallas, TX",
     "pickup_datetime": "2025-09-28T08:00:00Z",
@@ -16,6 +18,8 @@
   },
   {
     "load_id": "L002",
+    "load_booked": "N",
+    "counter_offer": null,
     "origin": "Los Angeles, CA",
     "destination": "Phoenix, AZ",
     "pickup_datetime": "2025-09-27T09:30:00Z",
@@ -31,6 +35,8 @@
   },
   {
     "load_id": "L003",
+    "load_booked": "N",
+    "counter_offer": null,
     "origin": "Miami, FL",
     "destination": "Atlanta, GA",
     "pickup_datetime": "2025-09-29T07:00:00Z",
@@ -46,6 +52,8 @@
   },
   {
     "load_id": "L004",
+    "load_booked": "N",
+    "counter_offer": null,
     "origin": "Seattle, WA",
     "destination": "Salt Lake City, UT",
     "pickup_datetime": "2025-09-30T06:00:00Z",
@@ -61,6 +69,8 @@
   },
   {
     "load_id": "L005",
+    "load_booked": "N",
+    "counter_offer": null,
     "origin": "Houston, TX",
     "destination": "Chicago, IL",
     "pickup_datetime": "2025-10-01T08:00:00Z",
@@ -75,4 +85,3 @@
     "dimensions": "48x42x60 in"
   }
 ]
-

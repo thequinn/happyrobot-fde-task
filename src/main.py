@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from typing import List, Optional
@@ -10,9 +11,15 @@ from fastapi.security import APIKeyHeader
 from pydantic import AnyHttpUrl, BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from supabase import Client, create_client
+import httpx
 
-logger = logging.getLogger(__name__)
+
+# Set up basic configuration
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Example usage
+logger.info("This is an info message.")
 
 
 class Settings(BaseSettings):
@@ -30,6 +37,8 @@ class Settings(BaseSettings):
 
 class Load(BaseModel):
     load_id: str
+    load_booked: Optional[str] = None
+    counter_offer: Optional[float] = None
     origin: str
     destination: str
     pickup_datetime: Optional[datetime] = None
@@ -46,7 +55,7 @@ class Load(BaseModel):
 
 class NegotiationResponse(BaseModel):
     load_id: str
-    accepted: bool
+    load_booked: str
     counter_offer: Optional[float] = None
     message: str
     remaining_attempts: int = 0
@@ -63,8 +72,16 @@ api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 # Maximum number of negotiation attempts per load
 MAX_NEGOTIATION_EXCHANGES = 3
-# In-memory store of negotiation attempts per load ID
-NEGOTIATION_ATTEMPTS: dict[str, int] = {}
+
+
+# In-memory state per load_id tracking attempts and latest agent offer
+@dataclass
+class NegotiationState:
+    attempts: int = 0
+    last_agent_offer: Optional[float] = None
+
+
+NEGOTIATION_STATE: dict[str, NegotiationState] = {}
 
 
 @lru_cache
@@ -75,6 +92,7 @@ def get_settings() -> Settings:
 @lru_cache
 def get_supabase_client() -> Client:
     settings = get_settings()
+    # Create client with default options
     return create_client(str(settings.supabase_url), settings.supabase_service_role_key)
 
 
@@ -158,52 +176,74 @@ async def get_loads(origin: str, destination: str, equipment_type: str) -> List[
 
 
 def run_negotiation_logic(
-    load: Optional[Load], proposed_rate: float, load_id: str
-) -> NegotiationResponse:
+    load: Optional[Load],
+    carrier_offer: float,
+    load_id: str,
+    attempt_index: int,
+    agent_last_offer: Optional[float],
+) -> tuple[NegotiationResponse, float]:
+    """Return the agent's response and the offer he will carry forward."""
 
-    if load and load.loadboard_rate:
-        original_offer = load.loadboard_rate
-    else:
-        original_offer = proposed_rate
-
-    acceptance_threshold = loadboard_rate * 0.97
-
-    # Agent's new offer to carrier
-    new_offer = (original_offer + proposed_rate) // 2
-
-    if request.proposed_rate >= acceptance_threshold:
-        return NegotiationResponse(
-            load_id=request.load_id,
-            accepted=True,
-            message="Offer accepted; within 3% of target rate.",
-        )
-
-    counter_offer = round(target_rate * 0.98, 2)
-    return NegotiationResponse(
-        load_id=load_id,
-        accepted=False,
-        counter_offer=counter_offer,
-        message="Countering at 98% of target rate.",
+    agent_original_offer = (
+        load.loadboard_rate
+        if load and load.loadboard_rate is not None
+        else carrier_offer
     )
 
+    if attempt_index == 0:
+        agent_new_offer = round(agent_original_offer * 0.97)
+    else:
+        baseline = (
+            agent_last_offer if agent_last_offer is not None else agent_original_offer
+        )
+        agent_new_offer = round((agent_original_offer + baseline) / 2.0)
 
-# The dependencies param forces API key authentication on every call to /negotiate
+    if carrier_offer >= agent_new_offer:
+        message = (
+            f"The agent accepted the carrier's offer of ${carrier_offer:,.0f}; "
+            f"it meets the agent's target of ${agent_new_offer:,.0f}."
+        )
+        response = NegotiationResponse(
+            load_id=load_id,
+            load_booked="Y",
+            message=message,
+        )
+    else:
+        message = (
+            f"The agent counters at ${agent_new_offer:,.0f}. "
+            f"Original ask was ${agent_original_offer:,.0f}."
+        )
+        response = NegotiationResponse(
+            load_id=load_id,
+            load_booked="N",
+            counter_offer=float(agent_new_offer),
+            message=message,
+        )
+
+    return response, float(agent_new_offer)
+
+
+# The param,dependencies, forces API key authentication on every call to /negotiate
 @app.post(
     "/negotiate",
     response_model=NegotiationResponse,
     dependencies=[Depends(enforce_api_key)],
 )
 async def negotiate(
-    load_id: str, proposed_rate: float, notes: Optional[str] = None
+    load_id: str, carrier_offer: float, notes: Optional[str] = None
 ) -> NegotiationResponse:
     settings = get_settings()
     supabase = get_supabase_client()
 
-    attempts_used = NEGOTIATION_ATTEMPTS.get(load_id, 0)
-    if attempts_used >= MAX_NEGOTIATION_EXCHANGES:
+    state = NEGOTIATION_STATE.get(load_id)
+    if state is None:
+        state = NegotiationState()
+        NEGOTIATION_STATE[load_id] = state
+
+    if state.attempts >= MAX_NEGOTIATION_EXCHANGES:
         return NegotiationResponse(
             load_id=load_id,
-            accepted=False,
+            load_booked="N",
             message="Negotiation attempt limit reached; please contact support.",
             remaining_attempts=0,
         )
@@ -245,17 +285,24 @@ async def negotiate(
             detail="Invalid data in data store",
         ) from exc
 
-    attempts_used += 1
-    NEGOTIATION_ATTEMPTS[load_id] = attempts_used
-    remaining_attempts = MAX_NEGOTIATION_EXCHANGES - attempts_used
+    negotiation_response, agent_offer = run_negotiation_logic(
+        load,
+        carrier_offer,
+        load_id,
+        state.attempts,
+        state.last_agent_offer,
+    )
 
-    negotiation_response = run_negotiation_logic(load, proposed_rate, load_id)
+    state.last_agent_offer = agent_offer
+    state.attempts += 1
+    remaining_attempts = MAX_NEGOTIATION_EXCHANGES - state.attempts
     negotiation_response.remaining_attempts = max(remaining_attempts, 0)
 
-    if negotiation_response.accepted:
-        NEGOTIATION_ATTEMPTS.pop(load_id, None)
+    if negotiation_response.load_booked == "Y":
+        NEGOTIATION_STATE.pop(load_id, None)
     elif remaining_attempts <= 0:
-        NEGOTIATION_ATTEMPTS[load_id] = MAX_NEGOTIATION_EXCHANGES
+        state.attempts = MAX_NEGOTIATION_EXCHANGES
+        negotiation_response.message += " No further counter offers are available."
 
     return negotiation_response
 

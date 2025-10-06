@@ -1,14 +1,23 @@
-# Load Search API
+# HappyRobot Agent API
 
-FastAPI proof-of-concept that lets freight brokerages search Supabase-hosted load data by origin, destination, and equipment type. The service exposes a secured `/get_loads` endpoint backed by SQL filters in Supabase and is designed for deployment on Google Cloud Run.
+FastAPI service powering happyrobot.ai agents. It currently exposes a read endpoint for querying Supabase-hosted loads and a negotiation workflow that brokers can use to finalize pricing with carriers. Designed for deployment on Google Cloud Run with Supabase as the datastore.
 
 ## Features
 
 - Supabase-backed persistence for freight loads stored in the `loads` table.
-- Parameterized filtering by `origin`, `destination`, and `equipment_type` via SQL `ILIKE` queries.
+- Parameterized filtering by `origin`, `destination`, and `equipment_type` via SQL `ILIKE` queries at `/get_loads` (GET).
+- Negotiation workflow at `/negotiate` (POST) with API-driven counter offers, auto-booking, and Supabase updates.
 - API key authentication enforced through the `Authorization: Bearer <api_key>` header.
 - FastAPI auto-generated docs available at `/docs` and `/redoc`.
 - Container-ready setup for Google Cloud Run with HTTPS termination handled by the platform.
+
+## API Endpoints
+
+| Method | Path          | Description |
+| ------ | ------------- | ----------- |
+| GET    | `/get_loads`  | Returns loads filtered by `origin`, `destination`, and `equipment_type`. Only loads with `load_booked = 'Y'` are returned. |
+| POST   | `/negotiate`  | Runs the negotiation workflow for a specific `load_id`, tracking counter offers, booking status, and persisting accepted deals back to Supabase. |
+| GET    | `/health`     | Simple health check used for uptime monitoring. |
 
 ## Requirements
 
@@ -57,14 +66,19 @@ SUPABASE_DB_URL=postgresql://postgres:<password>@db.<project>.supabase.co:5432/p
    pip install -r requirements.txt
    uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
    ```
-2. Send authenticated requests:
+2. Send authenticated requests (GET loads):
    ```bash
    curl -H "Authorization: Bearer $LOAD_API_KEY" \
         "http://127.0.0.1:8000/get_loads?origin=Chicago"
    ```
-3. Health check endpoint: `http://localhost:8000/health`
+3. Kick off a negotiation (POST):
+   ```bash
+   curl -X POST "http://127.0.0.1:8000/negotiate?load_id=L001&carrier_offer=1500" \
+        -H "Authorization: Bearer $LOAD_API_KEY"
+   ```
+4. Health check endpoint: `http://localhost:8000/health`
 
-4. Visit the interactive docs at `http://127.0.0.1:8000/docs` or `http://127.0.0.1:8000/redoc`.
+5. Visit the interactive docs at `http://127.0.0.1:8000/docs` or `http://127.0.0.1:8000/redoc`.
 
 ## Supabase Table Setup
 

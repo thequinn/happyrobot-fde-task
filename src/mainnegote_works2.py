@@ -53,9 +53,9 @@ class Load(BaseModel):
 class NegotiationResponse(BaseModel):
     load_id: str
     load_booked: str
-    carrier_offer: int
-    agent_new_offer: int
-    agreed_price: int  # -1 means no agreement reached
+    carrier_offer: float
+    agent_new_offer: float
+    agreed_price: float  # -1 means no agreement reached
     message: str
     remaining_attempts: int = 3
 
@@ -73,8 +73,7 @@ MAX_NEGOTIATION_EXCHANGES = 3
 @dataclass
 class NegotiationState:
     attempts: int = 0
-    last_agent_offer: Optional[int] = None
-    last_carrier_offer: Optional[int] = None
+    last_agent_offer: Optional[float] = None
 
 
 NEGOTIATION_STATE: dict[str, NegotiationState] = {}
@@ -133,17 +132,16 @@ async def get_loads(origin: str, destination: str, equipment_type: str) -> List[
 
 def run_negotiation_logic(
     load: Optional[Load],
-    carrier_offer: int,
+    carrier_offer: float,
     load_id: str,
     attempt_index: int,
-    agent_last_offer: Optional[int],
-    previous_carrier_offer: Optional[int],
-) -> tuple[NegotiationResponse, int]:
+    agent_last_offer: Optional[float],
+) -> tuple[NegotiationResponse, float]:
 
     # Round 0: This is the round before any negotiation.
-    # Agent's original offer is the loadboard rate. If unknown, fall back to the carrier offer.
+    # Agent's original offer is the loadboard rate.
     agent_original_offer = (
-        int(round(load.loadboard_rate))
+        load.loadboard_rate
         if load and load.loadboard_rate is not None
         else carrier_offer
     )
@@ -155,39 +153,16 @@ def run_negotiation_logic(
     
     (2) If agent can't accept the carrier_offer, agent_new_offer will be used  as agent_last_offer in the next round.
     """
-    reuse_prior_offer = (
-        previous_carrier_offer is not None
-        and agent_last_offer is not None
-        and carrier_offer == previous_carrier_offer
-    )
-
-    if agent_last_offer is not None and carrier_offer >= agent_last_offer:
-        message = (
-            f"The agent accepted the carrier's offer of ${carrier_offer:,.0f}; "
-            f"it meets the agent's target of ${agent_last_offer:,.0f}."
-        )
-        response = NegotiationResponse(
-            load_id=load_id,
-            load_booked="Y",
-            carrier_offer=carrier_offer,
-            agent_new_offer=agent_last_offer,
-            agreed_price=int(carrier_offer),
-            message=message,
-            remaining_attempts=MAX_NEGOTIATION_EXCHANGES - attempt_index,
-        )
-        return response, agent_last_offer
-
-    if reuse_prior_offer and agent_last_offer is not None:
-        agent_new_offer = int(agent_last_offer)
-    elif attempt_index == 0:
-        agent_new_offer = int(round(agent_original_offer * 0.97))
+    # Round 1 of negotiation:
+    if attempt_index == 0:
+        agent_new_offer = round(agent_original_offer * 0.97)
+    # Round 2 and 3 of negotiation
     else:
-        baseline = (
-            agent_last_offer if agent_last_offer is not None else agent_original_offer
+        # Add a random number to agent_new_offer, so it's not too predictable
+        random_number = random.uniform(1, load.loadboard_rate * 0.02)
+        agent_new_offer = round(
+            (agent_original_offer + agent_last_offer + random_number) / 2.0
         )
-        agent_new_offer = (agent_original_offer + baseline) / 2.0
-        random_number = random.uniform(1, agent_original_offer * 0.02)
-        agent_new_offer = int(round(agent_new_offer + random_number))
 
     # Update agent_last_offer for next iteration
     agent_last_offer = agent_new_offer
@@ -205,7 +180,7 @@ def run_negotiation_logic(
             carrier_offer=carrier_offer,
             # Agent doesn't need to counter cos agreen accepted carrier's proposed rate
             agent_new_offer=-1,
-            agreed_price=int(carrier_offer),
+            agreed_price=carrier_offer,
             message=message,
             # Number of Carrier's counter offers
             # attempt_count=attempt_index + 1,
@@ -223,8 +198,8 @@ def run_negotiation_logic(
             # Carrier's offer for this round
             carrier_offer=carrier_offer,
             # Agent's counter offer for next round
-            agent_new_offer=int(agent_new_offer),
-            # -1 means agent didn't accept the offer
+            agent_new_offer=agent_new_offer,
+            # -1 means agent accepted the offer
             agreed_price=-1,
             message=message,
             # Number of Carrier's counter offers
@@ -232,7 +207,7 @@ def run_negotiation_logic(
             remaining_attempts=MAX_NEGOTIATION_EXCHANGES - attempt_index - 1,
         )
 
-    return response, int(agent_new_offer)
+    return response, float(agent_new_offer)
 
 
 @app.post(
@@ -241,8 +216,9 @@ def run_negotiation_logic(
     dependencies=[Depends(enforce_api_key)],
 )
 async def negotiate(
-    load_id: str, carrier_offer: int, notes: Optional[str] = None
+    load_id: str, carrier_offer: float, notes: Optional[str] = None
 ) -> NegotiationResponse:
+
     state = NEGOTIATION_STATE.get(load_id)
     if state is None:
         state = NegotiationState()
@@ -287,29 +263,15 @@ async def negotiate(
             detail="Invalid data in data store",
         ) from exc
 
-    # If the load is already booked, return a response indicating that
-    if load.load_booked == "Y":
-        return NegotiationResponse(
-            load_id=load_id,
-            load_booked="Y",
-            carrier_offer=int(carrier_offer),
-            agent_new_offer=-1,
-            agreed_price=int(load.loadboard_rate or carrier_offer),
-            message="Load already booked; negotiation closed.",
-            remaining_attempts=0,
-        )
-
     negotiation_response, agent_offer = run_negotiation_logic(
         load,
         carrier_offer,
         load_id,
         state.attempts,
         state.last_agent_offer,
-        state.last_carrier_offer,
     )
 
     state.last_agent_offer = agent_offer
-    state.last_carrier_offer = carrier_offer
     state.attempts += 1
     remaining_attempts = MAX_NEGOTIATION_EXCHANGES - state.attempts
     negotiation_response.remaining_attempts = max(remaining_attempts, 0)

@@ -75,8 +75,7 @@ SQL example:
 ```sql
 create table public.loads (
   load_id text primary key,
-  load_booked text default 'Y',
-  counter_offer numeric,
+  load_booked text default 'N',
   origin text not null,
   destination text not null,
   pickup_datetime timestamptz,
@@ -91,6 +90,8 @@ create table public.loads (
   dimensions text
 );
 ```
+
+The negotiation workflow sets `load_booked` to `"Y"` automatically when an offer is accepted, so starting new loads with `"N"` ensures unfinished deals remain visible to carriers.
 
 Seed data using the Supabase dashboard or CLI with the entries in [`loads.json`](loads.json), or run the helper script:
 

@@ -49,7 +49,6 @@ CREATE_TABLE_SQL = f"""
 create table if not exists public.{TABLE_NAME} (
   load_id text primary key,
   load_booked text default 'Y',
-  counter_offer numeric,
   origin text not null,
   destination text not null,
   pickup_datetime timestamptz,
@@ -68,7 +67,6 @@ create table if not exists public.{TABLE_NAME} (
 # Additional columns (in case table exists but is missing new columns)
 ALTER_COLUMNS_SQL = f"""
 alter table public.{TABLE_NAME} add column if not exists load_booked text default 'Y';
-alter table public.{TABLE_NAME} add column if not exists counter_offer numeric;
 """
 
 
@@ -81,7 +79,6 @@ def load_seed_data(path: Path) -> list[dict[str, object]]:
     for item in payload:
         record = dict(item)
         record.setdefault("load_booked", "Y")
-        record.setdefault("counter_offer", None)
         normalized.append(record)
     return normalized
 

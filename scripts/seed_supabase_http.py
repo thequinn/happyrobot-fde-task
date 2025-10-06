@@ -54,7 +54,6 @@ def load_seed_data(path: Path) -> list[dict[str, object]]:
     for item in payload:
         record = dict(item)
         record.setdefault("load_booked", "Y")
-        record.setdefault("counter_offer", None)
         normalized.append(record)
     return normalized
 

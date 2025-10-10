@@ -14,8 +14,7 @@ For each target table the script:
 
 from __future__ import annotations
 
-import json
-import os
+import os, json
 from pathlib import Path
 from typing import Sequence
 import sys

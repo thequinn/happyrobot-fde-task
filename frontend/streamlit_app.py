@@ -10,7 +10,9 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+# The argument, "API_BASE_URL", is the base URL for the FastAPI server.
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# The argument, "LOAD_API_KEY", is the shared secret for the FastAPI server.
 LOAD_API_KEY = os.getenv("LOAD_API_KEY")
 
 

@@ -27,7 +27,6 @@ app = FastAPI(
 
 # Register all feature routers so clients get loads, metrics, and call logs.
 app.include_router(loads_router)
-
 app.include_router(call_logs_router)
 app.include_router(metrics_router)
 

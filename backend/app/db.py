@@ -75,35 +75,35 @@ def create_call_log(payload: dict) -> dict:
     return data[0] if data else {}
 
 
-def update_call_log(call_id: str, payload: dict) -> Optional[dict]:
-    settings = get_settings()
-    response = (
-        get_supabase_client()
-        .table(settings.supabase_call_metrics_table)
-        .update(payload)
-        .eq("call_id", call_id)
-        .execute()
-    )
-    if getattr(response, "error", None):
-        raise RuntimeError(response.error)
-    data = getattr(response, "data", []) or []
-    return data[0] if data else None
+# def update_call_log(call_id: str, payload: dict) -> Optional[dict]:
+#     settings = get_settings()
+#     response = (
+#         get_supabase_client()
+#         .table(settings.supabase_call_metrics_table)
+#         .update(payload)
+#         .eq("call_id", call_id)
+#         .execute()
+#     )
+#     if getattr(response, "error", None):
+#         raise RuntimeError(response.error)
+#     data = getattr(response, "data", []) or []
+#     return data[0] if data else None
 
 
-def delete_call_log(call_id: str) -> bool:
-    settings = get_settings()
-    response = (
-        get_supabase_client()
-        .table(settings.supabase_call_metrics_table)
-        .delete()
-        .eq("call_id", call_id)
-        .select("call_id")
-        .execute()
-    )
-    if getattr(response, "error", None):
-        raise RuntimeError(response.error)
-    data = getattr(response, "data", []) or []
-    return bool(data)
+# def delete_call_log(call_id: str) -> bool:
+#     settings = get_settings()
+#     response = (
+#         get_supabase_client()
+#         .table(settings.supabase_call_metrics_table)
+#         .delete()
+#         .eq("call_id", call_id)
+#         .select("call_id")
+#         .execute()
+#     )
+#     if getattr(response, "error", None):
+#         raise RuntimeError(response.error)
+#     data = getattr(response, "data", []) or []
+#     return bool(data)
 
 
 def get_call_log(call_id: str) -> Optional[dict]:
@@ -139,6 +139,7 @@ def fetch_load(load_id: str) -> Optional[dict]:
 
 
 def update_load_booked(load_id: str, booked_value: str) -> None:
+    """Update the load_booked field for a given load_id."""
     settings = get_settings()
     response = (
         get_supabase_client()

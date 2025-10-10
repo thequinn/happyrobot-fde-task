@@ -1,0 +1,123 @@
+[
+  {
+    "load_id": "L001",
+    "call_started_at": "2025-09-28T08:05:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L002",
+    "call_started_at": "2025-09-27T22:10:00Z",
+    "sentiment": "negative",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L003",
+    "call_started_at": "2025-09-28T09:15:00Z",
+    "sentiment": "neutral",
+    "outcome": "canceled"
+  },
+  
+  {
+    "load_id": "L004",
+    "call_started_at": "2025-09-29T11:20:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L005",
+    "call_started_at": "2025-09-29T12:45:00Z",
+    "sentiment": "negative",
+    "outcome": "canceled"
+  },
+  {
+    "load_id": "L006",
+    "call_started_at": "2025-09-29T13:05:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L007",
+    "call_started_at": "2025-09-30T07:55:00Z",
+    "sentiment": "neutral",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L008",
+    "call_started_at": "2025-09-30T09:40:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L009",
+    "call_started_at": "2025-09-30T10:25:00Z",
+    "sentiment": "negative",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L010",
+    "call_started_at": "2025-10-01T08:10:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L011",
+    "call_started_at": "2025-10-01T09:20:00Z",
+    "sentiment": "neutral",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L012",
+    "call_started_at": "2025-10-01T10:35:00Z",
+    "sentiment": "negative",
+    "outcome": "canceled"
+  },
+  {
+    "load_id": "L013",
+    "call_started_at": "2025-10-01T11:50:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L014",
+    "call_started_at": "2025-10-02T07:15:00Z",
+    "sentiment": "neutral",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L015",
+    "call_started_at": "2025-10-02T08:30:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L016",
+    "call_started_at": "2025-10-02T09:45:00Z",
+    "sentiment": "negative",
+    "outcome": "canceled"
+  },
+  {
+    "load_id": "L017",
+    "call_started_at": "2025-10-03T08:05:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  },
+  {
+    "load_id": "L018",
+    "call_started_at": "2025-10-03T09:25:00Z",
+    "sentiment": "neutral",
+    "outcome": "rejected"
+  },
+  {
+    "load_id": "L019",
+    "call_started_at": "2025-10-03T10:40:00Z",
+    "sentiment": "negative",
+    "outcome": "canceled"
+  },
+  {
+    "load_id": "L020",
+    "call_started_at": "2025-10-03T11:55:00Z",
+    "sentiment": "positive",
+    "outcome": "accepted"
+  }
+]

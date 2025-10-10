@@ -67,7 +67,7 @@ def main() -> None:
     st.set_page_config(page_title="Call Metrics Dashboard", layout="wide")
     st.title("Inbound Call Metrics")
     st.caption(
-        "Visualization powered by the HappyRobot Agent API. "
+        "Visualization powered by the HappyRobot. "
         "Ensure API_BASE_URL and LOAD_API_KEY are set for authenticated access."
     )
 

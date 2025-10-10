@@ -7,8 +7,6 @@ from fastapi import FastAPI
 from .compat import ensure_httpx_proxy_support
 from .routes import call_logs_router, loads_router, metrics_router
 
-# from .routes import negotiation_router
-
 
 # Configure root logger once so the entire app emits consistent structured logs.
 logging.basicConfig(level=logging.INFO)
@@ -19,17 +17,16 @@ ensure_httpx_proxy_support()
 
 
 app = FastAPI(
-    title="HappyRobot Agent API",
+    title="HappyRobot API",
     description=(
         "FastAPI service that powers happyrobot.ai agents with endpoints for "
-        "load discovery and negotiation workflows."
+        "load discovery and call-metric workflows."
     ),
     version="0.1.0",
 )
 
-# Register all feature routers so clients get loads, negotiations, metrics and call logs.
+# Register all feature routers so clients get loads, metrics, and call logs.
 app.include_router(loads_router)
-# app.include_router(negotiation_router)
 
 app.include_router(call_logs_router)
 app.include_router(metrics_router)

@@ -1,12 +1,18 @@
-# HappyRobot Agent API
+# HappyRobot Platform
 
-FastAPI service powering happyrobot.ai agents. It currently exposes a read endpoint for querying Supabase-hosted loads and a negotiation workflow that brokers can use to finalize pricing with carriers. Designed for deployment on Google Cloud Run with Supabase as the datastore.
+The HappyRobot Platform consists of:
+
+A FastAPI backend service powering HappyRobot.ai’s agentic workflows. It currently exposes read endpoints for querying Supabase-hosted loads and tracking inbound call activity. Designed for deployment on Google Cloud Run with Supabase as the datastore.
+
+A Streamlit-based frontend for visualizing use case metrics.
+
+Local setup instructions for running both components in development.
 
 ## Project Overview
 
 The repository is now split into two deployable units:
 
-- `backend/` – FastAPI service that powers inbound load lookups, negotiation, metrics, and call-log CRUD.
+- `backend/` – FastAPI service that powers inbound load lookups, call metrics aggregation, and call-log CRUD.
 - `frontend/` – Streamlit dashboard that visualizes call metrics by calling the backend's `/metrics/summary` endpoint.
 
 ```
@@ -33,7 +39,6 @@ The shared `.env` file remains at the repository root so both the backend script
 
 - Supabase-backed persistence for freight loads stored in the `loads` table.
 - Parameterized filtering by `origin`, `destination`, and `equipment_type` via SQL `ILIKE` queries at `/get_loads` (GET).
-- Negotiation workflow at `/negotiate` (POST) with API-driven counter offers, auto-booking, and Supabase updates.
 - Call log CRUD endpoints (`/call_logs`) to capture inbound carrier interactions in real time.
 - Aggregated call-metrics endpoint at `/metrics/summary` (GET) to support operational dashboards.
 - API key authentication enforced through the `Authorization: Bearer <api_key>` header.
@@ -42,17 +47,16 @@ The shared `.env` file remains at the repository root so both the backend script
 
 ## API Endpoints
 
-| Method | Path                   | Description                                                                                                                                      |
-| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/get_loads`           | Returns loads filtered by `origin`, `destination`, and `equipment_type`. Only loads with `load_booked = 'Y'` are returned.                       |
-| POST   | `/negotiate`           | Runs the negotiation workflow for a specific `load_id`, tracking counter offers, booking status, and persisting accepted deals back to Supabase. |
-| GET    | `/metrics/summary`     | Returns aggregate statistics across inbound carrier calls (total count, sentiment distribution, and call outcome breakdown).                     |
-| GET    | `/call_logs`           | Lists call log records with pagination support.                                                                                                  |
-| POST   | `/call_logs`           | Creates a new call log entry (load, sentiment, outcome).                                                                                         |
-| GET    | `/call_logs/{call_id}` | Fetches a specific call log by identifier.                                                                                                       |
-| PATCH  | `/call_logs/{call_id}` | Partially updates an existing call log.                                                                                                          |
-| DELETE | `/call_logs/{call_id}` | Deletes a call log.                                                                                                                              |
-| GET    | `/health`              | Simple health check used for uptime monitoring.                                                                                                  |
+| Method | Path                   | Description                                                                                                                  |
+| ------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/get_loads`           | Returns loads filtered by `origin`, `destination`, and `equipment_type`. Only loads with `load_booked = 'Y'` are returned.   |
+| GET    | `/metrics/summary`     | Returns aggregate statistics across inbound carrier calls (total count, sentiment distribution, and call outcome breakdown). |
+| GET    | `/call_logs`           | Lists call log records with pagination support.                                                                              |
+| POST   | `/call_logs`           | Creates a new call log entry (load, sentiment, outcome).                                                                     |
+| GET    | `/call_logs/{call_id}` | Fetches a specific call log by identifier.                                                                                   |
+| PATCH  | `/call_logs/{call_id}` | Partially updates an existing call log.                                                                                      |
+| DELETE | `/call_logs/{call_id}` | Deletes a call log.                                                                                                          |
+| GET    | `/health`              | Simple health check used for uptime monitoring.                                                                              |
 
 ## Requirements
 
@@ -65,14 +69,14 @@ The shared `.env` file remains at the repository root so both the backend script
 
 The application reads configuration from environment variables (optionally via a local `.env` file):
 
-| Variable                      | Description                                                          |
-| ----------------------------- | -------------------------------------------------------------------- |
-| `SUPABASE_URL`                | Supabase project URL.                                                |
-| `SUPABASE_SERVICE_ROLE_KEY`   | Supabase service role key used to query the database.                |
-| `SUPABASE_LOADS_TABLE`        | (Optional) Table name; defaults to `loads`.                          |
-| `SUPABASE_CALL_METRICS_TABLE` | (Optional) Table name holding call logs; defaults to `call_metrics`. |
-| `LOAD_API_KEY`                | API key required in the `Authorization` header.                      |
-| `SUPABASE_DB_URL`             | Postgres connection string (service role credentials).               |
+| Variable                      | Description                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`                | Supabase project URL.                                                                                       |
+| `SUPABASE_SERVICE_ROLE_KEY`   | Supabase service role key used to query the database.                                                       |
+| `SUPABASE_LOADS_TABLE`        | (Optional) Table name; defaults to `loads`.                                                                 |
+| `SUPABASE_CALL_METRICS_TABLE` | (Optional) Table name holding call logs; defaults to `call_metrics`.                                        |
+| `LOAD_API_KEY`                | API key required in the `Authorization` header to access the server's endpoints. Set your own secret value. |
+| `SUPABASE_DB_URL`             | Postgres connection string (service role credentials).                                                      |
 
 Example `.env` file for local development:
 
@@ -110,14 +114,104 @@ SUPABASE_DB_URL=postgresql://postgres:<password>@db.<project>.supabase.co:5432/p
    curl -H "Authorization: Bearer $LOAD_API_KEY" \
         "http://127.0.0.1:8000/get_loads?origin=Chicago"
    ```
-3. Kick off a negotiation (POST):
+3. Send authenticated requests (POST call logs):
    ```bash
-   curl -X POST "http://127.0.0.1:8000/negotiate?load_id=L001&carrier_offer=1500" \
-        -H "Authorization: Bearer $LOAD_API_KEY"
+   curl -X POST "http://127.0.0.1:8000/call_logs" \
+     -H "Authorization: Bearer $LOAD_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "load_id": "L005",
+           "call_started_at": "2025-09-28T14:30:00Z",
+           "sentiment": "positive",
+           "outcome": "accepted"
+         }'
    ```
-4. Health check endpoint: `http://localhost:8000/health`
+4. Send authenticated requests (GET call metrics):
+   ```bash
+   curl -H "Authorization: Bearer $LOAD_API_KEY" \
+        "http://127.0.0.1:8000/metrics/summary"
+   ```
+5. Health check endpoint: `http://localhost:8000/health`
 
-5. Visit the interactive docs at `http://127.0.0.1:8000/docs` or `http://127.0.0.1:8000/redoc`.
+. Visit the interactive docs at `http://127.0.0.1:8000/docs` or `http://127.0.0.1:8000/redoc`.
+
+## Setting up ngrok
+
+Agent nodes on HappyRobot.ai are cloud-based—they live on the public internet. Your localhost, by contrast, is a private environment running on your machine (e.g., `http://localhost:8000`), and it’s not publicly routable.
+
+So when a webhook node tries to hit `http://localhost:8000/negotiate`, it fails because:
+
+1. Localhost is not exposed to the internet.
+2. HappyRobot’s cloud agents need a public URL to reach your server.
+
+### Why ngrok solves this
+
+Ngrok creates a secure tunnel from the public internet to your local machine. It gives you a temporary public URL like `https://abc123.ngrok.io`, which forwards requests to your local server.
+
+So now:
+
+- HappyRobot’s webhook node can call `https://abc123.ngrok.io/negotiate`.
+- Ngrok forwards that to `http://localhost:8000/negotiate` on your machine.
+- Your local FastAPI server responds, and the agent chain continues.
+
+---
+
+### Instructions to set up ngrok
+
+1. **Install ngrok**
+
+   ```bash
+   brew install ngrok
+   ```
+
+2. **Connect ngrok to your account**
+
+   Run the following command to add your auth token to the default `ngrok.yml`:
+
+   ```bash
+   ngrok config add-authtoken <YOUR_AUTH_TOKEN>
+   ```
+
+   Replace `<YOUR_AUTH_TOKEN>` with the value from your ngrok dashboard.
+
+   You can find the `ngrok.yml` location with:
+
+   ```bash
+   ngrok config check
+   ```
+
+3. **Start your local server**
+
+   Launch your FastAPI server (default setup):
+
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+4. **Start ngrok and expose your service**
+
+   ```bash
+   ngrok http 8000
+   ```
+
+   Replace `8000` with the port number your FastAPI server is running on.
+
+5. **Use the public URL provided**
+
+   Ngrok will display HTTP and HTTPS URLs that forward to your local machine, for example:
+
+   ```
+   Forwarding https://swaggering-danuta-unpaved.ngrok-free.dev -> http://localhost:8000
+   ```
+
+6. **(Optional) Inspect traffic**
+
+   Visit `http://127.0.0.1:4040` to inspect the HTTP traffic passing through ngrok.
+
+**Example URL substitution:**
+
+- Local: `https://localhost:8000/get_loads?origin=Chicago&destination=Dallas&equipment_type=Dry%20Van`
+- Public via ngrok: `https://swaggering-danuta-unpaved.ngrok-free.dev/get_loads?origin=Chicago&destination=Dallas&equipment_type=Dry%20Van`
 
 ### Frontend (Streamlit)
 
@@ -131,7 +225,9 @@ SUPABASE_DB_URL=postgresql://postgres:<password>@db.<project>.supabase.co:5432/p
    ```
 2. Ensure `API_BASE_URL` points at the running backend and `LOAD_API_KEY` matches your FastAPI configuration (set via shell exports or `.env`).
 
-## Supabase Table Setup
+### Supabase Table Setup
+
+### Loads Table
 
 Create the `loads` table in Supabase with columns matching the sample payload. You can do it by running the SQL in the Supabase dashboard (SQL Editor), via `psql`, or using the Supabase CLI. Using `if not exists` keeps the statement idempotent.
 
@@ -156,15 +252,13 @@ create table if not exists public.loads (
 );
 ```
 
-The negotiation workflow sets `load_booked` to `"Y"` automatically when an offer is accepted, so starting new loads with `"N"` ensures unfinished deals remain visible to carriers.
-
 Seed data using the Supabase dashboard or CLI with the entries in [`backend/data/loads.json`](backend/data/loads.json), or use the Supabase API-based seeder to populate both loads and call logs from JSON:
 
 ```bash
 python backend/scripts/seed_supabase_api.py
 ```
 
-This script reads [`backend/data/loads.json`](backend/data/loads.json) and [`backend/data/call_logs.json`](backend/data/call_logs.json) (if present) and writes them to Supabase using the service-role API key defined in `.env`.
+This script reads [`backend/data/loads.json`](backend/data/loads.json) and writes them to Supabase using the service-role API key defined in `.env`.
 
 ### Call Metrics Table
 

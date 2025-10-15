@@ -284,7 +284,7 @@ insert into public.call_metrics
 values
   ('L001', now() - interval '2 hours', 'positive', 'accepted'),
   ('L002', now() - interval '6 hours', 'neutral', 'rejected'),
-  ('L003', now() - interval '1 day', 'negative', 'canceled');
+  ('L003', now() - interval '1 day', 'negative', 'cancelled');
 ```
 
 Once populated, the `/metrics/summary` endpoint will aggregate the totals for the dashboard.

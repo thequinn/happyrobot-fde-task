@@ -15,7 +15,7 @@
     "load_id": "L003",
     "call_started_at": "2025-09-28T09:15:00Z",
     "sentiment": "neutral",
-    "outcome": "canceled"
+    "outcome": "cancelled"
   },
   
   {
@@ -28,7 +28,7 @@
     "load_id": "L005",
     "call_started_at": "2025-09-29T12:45:00Z",
     "sentiment": "negative",
-    "outcome": "canceled"
+    "outcome": "cancelled"
   },
   {
     "load_id": "L006",
@@ -63,14 +63,14 @@
   {
     "load_id": "L011",
     "call_started_at": "2025-10-01T09:20:00Z",
-    "sentiment": "neutral",
+    "sentiment": "positive",
     "outcome": "rejected"
   },
   {
     "load_id": "L012",
     "call_started_at": "2025-10-01T10:35:00Z",
     "sentiment": "negative",
-    "outcome": "canceled"
+    "outcome": "cancelled"
   },
   {
     "load_id": "L013",
@@ -94,7 +94,7 @@
     "load_id": "L016",
     "call_started_at": "2025-10-02T09:45:00Z",
     "sentiment": "negative",
-    "outcome": "canceled"
+    "outcome": "cancelled"
   },
   {
     "load_id": "L017",
@@ -112,7 +112,7 @@
     "load_id": "L019",
     "call_started_at": "2025-10-03T10:40:00Z",
     "sentiment": "negative",
-    "outcome": "canceled"
+    "outcome": "cancelled"
   },
   {
     "load_id": "L020",
